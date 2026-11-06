@@ -60,6 +60,8 @@ merged_modules = {
     "crm_stage_multi_team": "crm",
     # OCA/sale-reporting
     "sale_order_report_product_image": "sale",
+    # OCA/sale-workflow
+    "sale_force_invoiced": "sale",
     # OCA/stock-logistics-warehouse
     "stock_move_quantity_product_uom": "stock",
 }
