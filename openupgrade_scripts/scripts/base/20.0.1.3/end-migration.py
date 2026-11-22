@@ -10,9 +10,10 @@ file behind them, so they are rebuilt here from the 19.0 tables ir_model_access 
 import logging
 from pathlib import Path
 
+from openupgradelib import openupgrade
+
 from odoo.modules.module import get_module_path
 from odoo.tools.misc import file_path
-from openupgradelib import openupgrade
 
 _logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ def _create(env, vals, source):
 def migrate(env, version):
     cr = env.cr
     revalidate_deferred_views(env)
+    replace_removed_qweb_output(cr)
     remove_vanished_modules(env)
     # res.partner.bank.country_id (precomputed) was added by pre-migration from res.bank, so
     # Odoo did not compute it for accounts whose bank had no country
@@ -102,6 +104,24 @@ def revalidate_deferred_views(env):
         except Exception as error:  # noqa: BLE001
             _logger.error("UPGRADE20 view still invalid %s (%s): %s", view.id, view.xml_id, str(error)[:500])
     _logger.info("UPGRADE20 re-validated %s deferred views", len(views))
+
+
+def replace_removed_qweb_output(cr):
+    """20.0 server QWeb no longer knows t-esc and t-raw (aliases of t-out deprecated since 15.0):
+    such a node renders nothing ("Unknown directives"). Module files are reloaded, but noupdate
+    views (mail body templates) and website copies of a view keep their 19.0 arch. Every
+    language of their arch_db gets t-out; t-raw content is escaped from now on unless it is
+    Markup, as Odoo's own deprecation message advises."""
+    openupgrade.logged_query(
+        cr,
+        r"""
+        UPDATE ir_ui_view v
+           SET arch_db = (SELECT jsonb_object_agg(a.key, regexp_replace(a.value, '(\s)t-(esc|raw)=', '\1t-out=', 'g'))
+                            FROM jsonb_each_text(v.arch_db) a)
+         WHERE v.type = 'qweb'
+           AND EXISTS (SELECT 1 FROM jsonb_each_text(v.arch_db) a WHERE a.value ~ '\st-(esc|raw)=')
+        """,
+    )
 
 
 # The repository root: openupgrade_framework / openupgrade_scripts are on the addons path only
