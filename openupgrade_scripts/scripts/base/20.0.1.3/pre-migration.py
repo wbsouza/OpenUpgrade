@@ -67,6 +67,9 @@ NEW_AUTO_INSTALL = {
 
 XMLID_RENAMES = [
     ("base.state_in_or", "base.state_in_od"),
+    # the website model moved to base, with its default record: without the rename base data
+    # creates a second, empty "My Website" and base.default_website points at it
+    ("website.default_website", "base.default_website"),
 ]
 
 PARTNER_BANK_FIELDS = [
