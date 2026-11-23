@@ -8,6 +8,10 @@
   ("Wrong value for product.template.store_by: 'none'").
 - ``stock.picking.type.product_label_format``: 20.0 prefixes the barcode kind (``barcode_``/``qr_``)
   and renamed the price suffix (``2x7xprice`` -> ``barcode_2x7_price``).
+- ``ir.sequence`` ``stock.seq_package``: 20.0 renamed ``stock.quant.package`` to ``stock.package`` and
+  numbers packages with ``next_by_code('stock.package')``. The sequence is ``noupdate`` data, so it
+  kept its 19.0 code: no sequence matched, the package name stayed empty and creating any package
+  without a typed name failed ("Missing required field 'Package Reference'").
 """
 
 import logging
@@ -37,3 +41,5 @@ def migrate(cr, version):
         )
         if cr.rowcount:
             _logger.info("UPGRADE20 picking type label format %s -> %s on %s rows", old, new, cr.rowcount)
+    cr.execute("UPDATE ir_sequence SET code = 'stock.package' WHERE code = 'stock.quant.package'")
+    _logger.info("UPGRADE20 package sequence code stock.quant.package -> stock.package on %s rows", cr.rowcount)
