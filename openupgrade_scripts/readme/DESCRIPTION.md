@@ -13,7 +13,7 @@ Modules covered by this branch:
 | sale | `product.template.sale_delay` integer → company-dependent jsonb |
 | payment | provider `state` → `active` / `is_live` (disabled providers stay inactive, enabled ones stay live); methods are per provider: tokens and transactions repointed to the provider's own method, unused catalog rows removed, each provider's methods active as the 19.0 catalog method of the same code was for it |
 | payment_custom | custom providers (Wire Transfer, Cash on Delivery) moved from the dropped `payment_custom.redirect_form` to `payment.generic_redirect_form` |
-| resource | zero-hour lunch attendances removed |
+| resource | zero-hour lunch attendances removed; `res.company.tz` (now stored, and the timezone working hours are read in, `resource.calendar.tz` being dropped) keeps the 19.0 company timezone, else the timezone of the company's default working hours (left as is, its compute gave UTC to a company of a multi-timezone country) |
 | stock | `product.template.tracking` `'none'` → NULL (left as is, every product form crashed in `_compute_store_by`); picking type product label formats renamed (`2x7xprice` → `barcode_2x7_price`, ...); the `noupdate` package sequence keeps its 19.0 code `stock.quant.package` → `stock.package` (left as is, a package created without a typed name failed: no sequence numbered it) |
 | website | obsolete generated "new page" templates removed |
 | l10n_ca | companies on the `ca_2023` chart moved to the 20.0 Canadian chart of accounts (see Known issues) |
