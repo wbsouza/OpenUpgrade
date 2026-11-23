@@ -8,8 +8,9 @@ Module renames/merges come from apriori.py.
 import os
 import re
 
-from odoo.modules.module import get_module_path
 from openupgradelib import openupgrade
+
+from odoo.modules.module import get_module_path
 
 RENAMED_MODULES = {
     "purchase_requisition_sale": "purchase_alternative_sale",
@@ -66,6 +67,9 @@ NEW_AUTO_INSTALL = {
 
 XMLID_RENAMES = [
     ("base.state_in_or", "base.state_in_od"),
+    # the website model moved to base, with its default record: without the rename base data
+    # creates a second, empty "My Website" and base.default_website points at it
+    ("website.default_website", "base.default_website"),
 ]
 
 PARTNER_BANK_FIELDS = [
@@ -159,9 +163,10 @@ def _free_acl_xmlids(cr):
     )
 
 
-_XML_ID = re.compile(r'\bid="([\w.\-]+)"')
+# XML attributes may be single-quoted (fleet: <record id='fleet_vehicle_view_form' ...>)
+_XML_ID = re.compile(r"""\bid=(?:"([\w.\-]+)"|'([\w.\-]+)')""")
 _RECORD = re.compile(r"<(record|template|menuitem)\b([^>]*)>", re.S)
-_ATTR = re.compile(r'\b(id|model)="([^"]+)"')
+_ATTR = re.compile(r"""\b(id|model)=(?:"([^"]+)"|'([^']+)')""")
 _TAG_MODEL = {"template": "ir.ui.view", "menuitem": "ir.ui.menu"}
 # old records of these models are deleted with their xmlid: keeping them duplicates a menu,
 # a binding or a cron. Data records (partners, products, ...) only lose the xmlid.
@@ -201,14 +206,14 @@ def _xml_ids_of(module):
     sources = _xml_sources(module)
     if sources is None:
         return None
-    return {_qualified(module, x) for source in sources for x in _XML_ID.findall(source)}
+    return {_qualified(module, x) for source in sources for pair in _XML_ID.findall(source) for x in pair if x}
 
 
 def _xml_tags_of(module):
     """(tag, attributes text, {id, model}) of each record/template/menuitem with an id."""
     for source in _xml_sources(module) or ():
         for tag, attrs in _RECORD.findall(source):
-            values = dict(_ATTR.findall(attrs))
+            values = {name: double or single for name, double, single in _ATTR.findall(attrs)}
             if values.get("id"):
                 yield tag, attrs, values
 
