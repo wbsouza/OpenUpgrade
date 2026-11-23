@@ -21,15 +21,21 @@ code calls the 20.0 method.
 
 from openupgradelib import openupgrade
 
-# in this order: the abandoned-cart cron frees the name the availability cron takes
+# in this order: the abandoned-cart cron frees the name the availability cron takes;
+# each rename also checks the cron's model and method, so a partly renamed database
+# (a re-run) never moves a cron onto the other one's xmlid
 CRON_XMLIDS = [
     (
         "website_sale.ir_cron_send_availability_email",
         "website_sale.ir_cron_send_abandoned_email",
+        "website",
+        "_send_abandoned_cart_email(",
     ),
     (
         "website_sale_stock.ir_cron_send_availability_email",
         "website_sale.ir_cron_send_availability_email",
+        "product.product",
+        "_send_availability_email(",
     ),
 ]
 
@@ -42,9 +48,25 @@ def _xmlid_exists(cr, xmlid):
     return bool(cr.rowcount)
 
 
+def _is_cron_of(cr, xmlid, model, method):
+    """The xmlid is a cron of that model whose code calls the method."""
+    cr.execute(
+        """
+        SELECT 1 FROM ir_model_data d
+          JOIN ir_cron c ON c.id = d.res_id
+          JOIN ir_act_server s ON s.id = c.ir_actions_server_id
+          JOIN ir_model m ON m.id = s.model_id
+         WHERE d.model = 'ir.cron' AND d.module = %s AND d.name = %s
+           AND m.model = %s AND strpos(s.code, %s) > 0
+        """,
+        [*xmlid.split("."), model, method],
+    )
+    return bool(cr.rowcount)
+
+
 def _rename_crons(cr):
-    for old, new in CRON_XMLIDS:
-        if not _xmlid_exists(cr, old) or _xmlid_exists(cr, new):
+    for old, new, model, method in CRON_XMLIDS:
+        if _xmlid_exists(cr, new) or not _is_cron_of(cr, old, model, method):
             continue
         action_old, action_new = f"{old}_ir_actions_server", f"{new}_ir_actions_server"
         openupgrade.rename_xmlids(cr, [(old, new), (action_old, action_new)])
